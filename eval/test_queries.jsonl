@@ -1,0 +1,3 @@
+{"q":"Data Act","expect_url_contains":"data-act-now-in-force","expect_substring":"The EU’s Data Act is now in force","top_k":5}
+{"q":"Brazil cybersecurity law","expect_url_contains":"brazil-advances-first-national-cybersecurity-law","expect_substring":"first national cybersecurity law","top_k":5}
+{"q":"EU phishing campaign","expect_url_contains":"cybersecurity-awareness-campaign-against-phishing","expect_substring":"European Cybersecurity Month","top_k":5}

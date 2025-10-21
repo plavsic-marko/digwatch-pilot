@@ -1,0 +1,32 @@
+# venv / Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# env i lokalni state
+.env
+updates_state.json
+
+# editor/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# data dumpovi
+data/
+output/
+logs/
+*.log
+
+# Docker / ngrok
+*.pid
+.ngrok2/
+ngrok.yml
+
+weaviate-data/
+weaviate/
+vector-index/

@@ -1,0 +1,69 @@
+# scripts/create_schema.py (v3 klijent)
+import weaviate
+
+WVT = weaviate.Client("http://localhost:8080")
+
+
+def class_exists(name: str) -> bool:
+    sch = WVT.schema.get() or {}
+    classes = sch.get("classes") or []
+    return any(c.get("class") == name for c in classes)
+
+
+def ensure_class(payload):
+    name = payload["class"]
+    if class_exists(name):
+        WVT.schema.delete_class(name)
+    WVT.schema.create_class(payload)
+
+
+def main():
+    ensure_class({
+        "class": "BlogDocument",
+        "description": "One page/post on Diplomacy.edu",
+        "vectorizer": "text2vec-transformers",
+        "properties": [
+            {"name": "url", "dataType": ["text"], "tokenization": "field"},
+            {"name": "title", "dataType": ["text"]},
+            {"name": "author", "dataType": ["text"]},
+            {"name": "date", "dataType": ["text"]},
+            {"name": "tags", "dataType": ["text[]"]},
+            {"name": "categories", "dataType": ["text[]"]},
+        ]
+    })
+
+    ensure_class({
+        "class": "BlogSection",
+        "description": "Section (H2/H3) within a document",
+        "vectorizer": "text2vec-transformers",
+        "properties": [
+            {"name": "url", "dataType": ["text"], "tokenization": "field"},
+            {"name": "title", "dataType": ["text"]},
+            {"name": "doc", "dataType": ["BlogDocument"]},
+        ]
+    })
+
+    ensure_class({
+        "class": "BlogParagraph",
+        "description": "Paragraph-level chunk",
+        "vectorizer": "text2vec-transformers",
+        "properties": [
+            {"name": "url", "dataType": ["text"], "tokenization": "field"},
+            {"name": "title", "dataType": ["text"]},
+            {"name": "section", "dataType": ["text"]},
+            {"name": "paragraphId", "dataType": ["text"], "tokenization": "field"},
+            {"name": "text", "dataType": ["text"]},
+            {"name": "author", "dataType": ["text"]},
+            {"name": "date", "dataType": ["text"]},
+            {"name": "tags", "dataType": ["text[]"]},
+            {"name": "categories", "dataType": ["text[]"]},
+            {"name": "doc", "dataType": ["BlogDocument"]},
+            {"name": "sectionRef", "dataType": ["BlogSection"]},
+        ]
+    })
+
+    print("✅ Weaviate schema ready (v3 client).")
+
+
+if __name__ == "__main__":
+    main()
