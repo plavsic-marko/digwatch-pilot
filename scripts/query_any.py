@@ -1,5 +1,5 @@
 from pprint import pprint
-from weaviate_client import WVT
+from scripts.weaviate_client import WVT
 
 PARA_CLASS = "DigwatchParagraph"
 DOC_CLASS = "DigwatchUpdate"

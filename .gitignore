@@ -30,3 +30,39 @@ ngrok.yml
 weaviate-data/
 weaviate/
 vector-index/
+
+# --- Python / venv / cache ---
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# --- Env / secrets ---
+.env
+.env.*
+*.env
+
+# --- Weaviate local data (docker volume na disk) ---
+weaviate_data/
+weaviate_data/**
+
+# --- Generated outputs / logs ---
+*.log
+*.sqlite
+*.db
+
+# Newsletter generisani fajlovi (zadrži skriptu, ignoriši artefakte)
+newsletter/newsletter_*.md
+newsletter/newsletter_*.json

@@ -3,7 +3,7 @@ import json
 import uuid
 from collections import defaultdict
 
-from weaviate_client import WVT
+from scripts.weaviate_client import WVT
 
 DATA = Path("data/processed/updates_paragraphs.jsonl")
 

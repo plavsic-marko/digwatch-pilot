@@ -1,5 +1,5 @@
 import json
-from weaviate_client import WVT as client
+from scripts.weaviate_client import WVT as client
 
 
 CLASS = "DigwatchParagraph"

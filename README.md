@@ -1,12 +1,12 @@
-# digwatch-pilot — README (V2)
+# digwatch-pilot — README 
 
-Minimalni vodič za pokretanje **RAG pipeline-a za dig.watch Updates** na lokalnoj mašini (Windows, VS Code/CMD).
+Minimalni vodič za pokretanje **RAG pipeline-a za dig.watch Updates** i generisanje **Swiss Digital Policy Newsletter-a** na lokalnoj mašini (Windows, VS Code/CMD).
 
 ---
 
 ## 0) Pregled
 
-Tok rada (V2):
+### RAG pipeline
 
 1. **Crawler (taxonomy + updates)** → preuzmi kategorije/tagove i sve `updates` zapise sa dig.watch.
 2. **Chunker** → očisti HTML i podeli na pasuse (dodaje meta: `quarter`, `effective_date`, `tags`, `categories`).
@@ -14,6 +14,23 @@ Tok rada (V2):
 4. **Ingest** → upiši dokumente i pasuse u Weaviate sa relacijama (`updateRef`).
 5. **Query** → sanity check (BM25 ili hibrid).
 6. **Eval (opciono)** → lokalno testiranje na JSONL upitima.
+
+### Newsletter pipeline
+
+1. **Fetch iz baze** → koristeći lokalni API endpoint `/retrieve_digwatch` koji vraća rezultate iz Weaviate baze.
+2. \*\*Python skripta \*\***`make_newsletter.py`** → nalazi se u folderu `newsletter/`. Skripta povlači ažuriranja, normalizuje podatke i priprema ih za LLM.
+3. **LLM generacija** → koristi se OpenAI model (npr. `gpt-4o`) za formiranje newslettera u JSON strukturi.
+4. **Izlaz** → čuvanje u JSON i Markdown formatima. Markdown se može lako konvertovati u Word ili PDF.
+
+Struktura izlaza newslettera:
+
+- Naslov
+- Uvod
+- EU sekcija
+- Global sekcija
+- Zaključak
+
+Format je preuzet prema zahtevima koje je definisala Sorina.
 
 ---
 
@@ -43,12 +60,7 @@ docker run -d --name weaviate \
 python crawler/fetch_taxonomies.py
 ```
 
-Output:
-
-- `data/raw/categories.json`
-- `data/raw/taxonomy_map.json`
-
----
+Output: `data/raw/taxonomy_map.json`
 
 ### (b) Collect updates (full crawl)
 
@@ -56,14 +68,7 @@ Output:
 python crawler/collect_updates_full.py
 ```
 
-Output:
-
-- `data/raw/updates_all.json`
-- `data/raw/updates_state.json`
-
-Ako dobiješ `400 Bad Request` na zadnjoj stranici → znači da je kraj paginacije.
-
----
+Output: `data/raw/updates_all.json`, `data/raw/updates_state.json`
 
 ### (c) Chunk updates
 
@@ -71,13 +76,7 @@ Ako dobiješ `400 Bad Request` na zadnjoj stranici → znači da je kraj paginac
 python chunker/chunk_updates_v1.py
 ```
 
-Output:
-
-- `data/processed/updates_paragraphs.jsonl`
-
-Dodaje polja: `quarter`, `effective_date`, `tag_names`, `category_names`.
-
----
+Output: `data/processed/updates_paragraphs.jsonl`
 
 ### (d) Create schema (Weaviate)
 
@@ -85,12 +84,7 @@ Dodaje polja: `quarter`, `effective_date`, `tag_names`, `category_names`.
 python scripts/create_schema_digwatch.py
 ```
 
-Kreira:
-
-- `DigwatchUpdate` (document-level meta)
-- `DigwatchParagraph` (pasus-level) sa `updateRef` relacijom
-
----
+Kreira klase `DigwatchUpdate` i `DigwatchParagraph`.
 
 ### (e) Ingest hierarchy
 
@@ -101,10 +95,8 @@ python scripts/ingest_hierarchy_digwatch.py
 Output primer:
 
 ```
- Ingest done. Paragraphs: 75501, Updates: 24091
+Ingest done. Paragraphs: 75501, Updates: 24091
 ```
-
----
 
 ### (f) Query sanity check
 
@@ -112,17 +104,11 @@ Output primer:
 python scripts/query_weaviate.py "AI Act" --alpha 0.35 --k 5
 ```
 
-Output: prikazuje naslove, linkove i isečke.
-
----
-
 ### (g) (Opcionalno) Lokalni offline check
 
 ```bash
 python search_jsonl.py "AI Act"
 ```
-
-Radi pretragu direktno po `updates_paragraphs.jsonl`.
 
 ---
 
@@ -141,7 +127,11 @@ scripts/
   ├─ ingest_hierarchy_digwatch.py
   ├─ query_weaviate.py
   ├─ query_any.py
-  └─ debug_query.py
+  ├─ debug_query.py
+  └─ weaviate_client.py   
+
+newsletter/
+  └─ make_newsletter.py   
 
 eval/
   ├─ test_queries.jsonl
@@ -162,5 +152,61 @@ README.md           # ovaj fajl
 
 ---
 
-👉 TL;DR koraci:  
-`fetch_taxonomies → collect_updates_full → chunk_updates_v1 → create_schema_digwatch → ingest_hierarchy_digwatch → query_weaviate`
+## 4) Newsletter korišćenje
+
+### (a) Podesi parametre
+
+U `newsletter/make_newsletter.py` na vrhu:
+
+```python
+PARAMS = {
+    "q": "*",   # ili npr. "AI Act" za fokusiranu temu
+    "k": 20,
+    "alpha": 0.35
+}
+```
+
+### (b) Pokreni
+
+Iz root-a projekta:
+
+```bash
+python newsletter/make_newsletter.py
+```
+
+Iz foldera `newsletter/`:
+
+```bash
+python make_newsletter.py
+```
+
+### (c) Output
+
+```
+[DONE] Saved:
+  JSON: newsletter_Q3_2025_20251022_2226.json
+  MD:   newsletter_Q3_2025_20251022_2226.md
+```
+
+### (d) Konverzija
+
+```bash
+pandoc newsletter_Q3_2025_*.md -o newsletter_Q3_2025.docx
+pandoc newsletter_Q3_2025_*.md -o newsletter_Q3_2025.pdf
+```
+
+---
+
+## 5) Napomene
+
+
+
+- Skripta koristi `.env` fajl za čitanje OpenAI API ključa (`OPENAI_API_KEY`).
+- Broj povučenih vesti (`k`) treba držati razumnim (10–20) da se izbegnu greške 422.
+- Newsletter je zamišljen kao kvartalni (Q1–Q4), ali query može biti prilagođen (tematski ili vremenski).
+
+---
+
+👉 TL;DR koraci:\
+`fetch_taxonomies → collect_updates_full → chunk_updates_v1 → create_schema_digwatch → ingest_hierarchy_digwatch → query_weaviate → make_newsletter`
+

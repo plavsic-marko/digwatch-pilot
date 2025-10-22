@@ -12,6 +12,8 @@ services:
       ENABLE_MODULES: "text2vec-transformers,bm25"
       TRANSFORMERS_INFERENCE_API: "http://t2v:8080"
       CLUSTER_HOSTNAME: "node1"
+    volumes:
+      - ./weaviate_data:/var/lib/weaviate # <— novo: trajna memorija na disku
     restart: unless-stopped
     depends_on:
       - t2v
@@ -26,3 +28,4 @@ services:
 networks:
   default:
     name: diplo-net
+    external: true # <— opciono: koristi postojeću mrežu bez warning-a

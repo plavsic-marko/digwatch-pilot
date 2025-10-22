@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 
-from weaviate_client import WVT
+from scripts.weaviate_client import WVT
 
 app = FastAPI(title="Digwatch Retriever API", version="1.0")
 

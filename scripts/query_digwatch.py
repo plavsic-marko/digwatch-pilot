@@ -2,7 +2,7 @@
 # Opcioni filteri: --from 2024-01-01 --to 2024-12-31 --quarter 2025-Q2
 
 import argparse
-from weaviate_client import WVT
+from scripts.weaviate_client import WVT
 
 PARA_CLASS = "DigwatchParagraph"
 

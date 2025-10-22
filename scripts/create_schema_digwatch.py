@@ -1,4 +1,4 @@
-from weaviate_client import WVT
+from scripts.weaviate_client import WVT
 
 
 def drop(name: str):
