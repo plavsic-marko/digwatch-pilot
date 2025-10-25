@@ -2,9 +2,10 @@
 import os
 import json
 import datetime as dt
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional  # NEW
 import requests
 from dotenv import load_dotenv
+import shutil  # NEW
 
 load_dotenv()  # učitaj .env (OPENAI_API_KEY, po želji i druge)
 
@@ -69,7 +70,7 @@ def fetch_updates() -> List[Dict[str, Any]]:
 
     items: List[Dict[str, Any]] = []
 
-    # Očekivani format iz tvog endpointa (videli smo primere u testovima):
+    # Očekivani format:
     # {
     #   "context": [...],
     #   "source_urls": [...],
@@ -81,7 +82,6 @@ def fetch_updates() -> List[Dict[str, Any]]:
         meta = data.get("meta")
 
         if isinstance(meta, list) and (context or srcs):
-            # Upari po indeksu (koliko god elemenata da ima)
             n = max(len(meta), len(context or []), len(srcs or []))
             for i in range(n):
                 m = meta[i] if i < len(meta) else {}
@@ -136,7 +136,6 @@ def build_prompt(items: List[Dict[str, Any]]) -> Dict[str, str]:
     Priprema system + user prompt: tražimo JSON newslettera (EU + Global)
     sa briefovima u formatu: title, summary, relevance.
     """
-    # Sažmi izvore za prompt (bez suvišnog balasta)
     compact_sources = []
     for it in items:
         compact_sources.append({
@@ -240,6 +239,7 @@ def render_markdown(news_json: Dict[str, Any]) -> str:
             md.append("**Summary:**  ")
             md.append(_safe_str(brief.get("summary", "")).strip() + "\n")
             md.append("**Relevance for Swiss public administration:**  ")
+            # NOTE: keep as-is if already correct
             md.append(_safe_str(brief.get("relevance", "")).strip() + "\n")
             md.append("---\n")
 
@@ -247,6 +247,33 @@ def render_markdown(news_json: Dict[str, Any]) -> str:
     md.append(_safe_str(news_json.get("conclusion", "")).strip())
     md.append("")
     return "\n".join(md)
+
+# NEW: PDF render iz Markdowna pomoću pypandoc (bezbedan fallback)
+
+
+def render_pdf_from_markdown(md_path: str) -> Optional[str]:
+    """
+    Pokušaj da konvertuje Markdown u PDF pomoću pypandoc.
+    Vraća putanju do PDF fajla ili None ako nije moguće (pypandoc/pandoc nisu instalirani).
+    """
+    try:
+        import pypandoc  # type: ignore
+    except Exception:
+        print(
+            "[INFO] pypandoc nije instaliran. Preskačem PDF export. (pip install pypandoc)")
+        return None
+
+    if shutil.which("pandoc") is None:
+        print("[INFO] `pandoc` nije pronađen u PATH-u. Preskačem PDF export. (install: https://pandoc.org/install.html)")
+        return None
+
+    pdf_path = os.path.splitext(md_path)[0] + ".pdf"
+    try:
+        pypandoc.convert_file(md_path, "pdf", outputfile=pdf_path)
+        return pdf_path
+    except Exception as e:
+        print(f"[WARN] PDF export nije uspeo: {e}")
+        return None
 
 
 def save_outputs(news_json: Dict[str, Any]) -> Dict[str, str]:
@@ -257,7 +284,13 @@ def save_outputs(news_json: Dict[str, Any]) -> Dict[str, str]:
         json.dump(news_json, f, ensure_ascii=False, indent=2)
     with open(md_path, "w", encoding="utf-8") as f:
         f.write(render_markdown(news_json))
-    return {"json": json_path, "md": md_path}
+
+    # NEW: automatski PDF iz MD (ako moguće)
+    pdf_path = render_pdf_from_markdown(md_path)
+    out = {"json": json_path, "md": md_path}
+    if pdf_path:
+        out["pdf"] = pdf_path
+    return out
 
 
 def main():
@@ -277,7 +310,10 @@ def main():
     print("[4/4] Saving outputs...")
     paths = save_outputs(news_json)
     print(f"[DONE] Saved:\n  JSON: {paths['json']}\n  MD:   {paths['md']}")
-    print("Tip: Otvori .md u VS Code-u (Preview) ili ga lako konvertuj u PDF (npr. 'Print to PDF' ili pandoc).")
+    if "pdf" in paths:
+        print(f"  PDF:  {paths['pdf']}")
+    else:
+        print("Tip: PDF export preskočen (instaliraj `pandoc` i `pypandoc` ili koristi 'Print to PDF').")
 
 
 if __name__ == "__main__":
